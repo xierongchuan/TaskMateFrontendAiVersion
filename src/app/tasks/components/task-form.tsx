@@ -60,6 +60,8 @@ export default function TaskForm() {
     defaultValues: {
       taskName: "",
       minute: "0",
+      hour: "9",
+      dayOfMonth: "1",
       daysOfWeek: [],
     },
   })
@@ -183,9 +185,18 @@ export default function TaskForm() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Minute</FormLabel>
-                        <FormControl>
-                          <Input placeholder="0-59" {...field} />
-                        </FormControl>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select minute" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
+                                <SelectItem key={minute} value={minute.toString()}>{minute}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -197,9 +208,18 @@ export default function TaskForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Hour</FormLabel>
-                          <FormControl>
-                            <Input placeholder="0-23" {...field} />
-                          </FormControl>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select hour" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                                    <SelectItem key={hour} value={hour.toString()}>{hour}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -214,7 +234,7 @@ export default function TaskForm() {
                     render={() => (
                       <FormItem>
                         <FormLabel>Day of the week</FormLabel>
-                        <div className="flex flex-wrap gap-4">
+                        <div className="grid grid-cols-4 gap-2 rounded-lg border p-2">
                         {days.map((item) => (
                           <FormField
                             key={item.id}
@@ -224,25 +244,24 @@ export default function TaskForm() {
                               return (
                                 <FormItem
                                   key={item.id}
-                                  className="flex flex-row items-start space-x-2 space-y-0"
+                                  className="flex flex-row items-center space-x-2 space-y-0"
                                 >
                                   <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(item.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...(field.value || []), item.id])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== item.id
-                                              )
-                                            )
+                                     <Button
+                                      variant={field.value?.includes(item.id) ? "default" : "outline"}
+                                      size="sm"
+                                      type="button"
+                                      onClick={() => {
+                                        const newValues = field.value?.includes(item.id)
+                                          ? field.value?.filter(v => v !== item.id)
+                                          : [...(field.value || []), item.id];
+                                        field.onChange(newValues);
                                       }}
-                                    />
+                                      className="w-full"
+                                    >
+                                      {item.label}
+                                    </Button>
                                   </FormControl>
-                                  <FormLabel className="font-normal">
-                                    {item.label}
-                                  </FormLabel>
                                 </FormItem>
                               )
                             }}
@@ -262,9 +281,18 @@ export default function TaskForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Day of the month</FormLabel>
-                          <FormControl>
-                            <Input placeholder="1-31" {...field} />
-                          </FormControl>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select day" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {Array.from({ length: 31 }, (_, i) => (i + 1).toString()).map(day => (
+                                    <SelectItem key={day} value={day}>{day}</SelectItem>
+                                ))}
+                            </SelectContent>
+                           </Select>
                           <FormMessage />
                         </FormItem>
                       )}
