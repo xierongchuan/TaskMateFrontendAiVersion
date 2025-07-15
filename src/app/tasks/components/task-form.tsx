@@ -3,8 +3,12 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import {
   Form,
   FormControl,
@@ -15,11 +19,11 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Checkbox } from "@/components/ui/checkbox"
 
 const formSchema = z.object({
   taskName: z.string().min(2, "Task name must be at least 2 characters.").max(50),
@@ -27,14 +31,24 @@ const formSchema = z.object({
     required_error: "Please select an employee to assign this task.",
   }),
   description: z.string().optional(),
-  frequency: z.enum(["hourly", "daily", "weekly", "monthly"], {
+  frequency: z.enum(["once", "hourly", "daily", "weekly", "monthly"], {
     required_error: "Please select a frequency.",
   }),
+  runDate: z.date().optional(),
   minute: z.string().regex(/^([0-5]?[0-9])$/, "Minute must be between 0 and 59."),
   hour: z.string().regex(/^([01]?[0-9]|2[0-3])$/, "Hour must be between 0 and 23.").optional(),
   daysOfWeek: z.array(z.string()).optional(),
   dayOfMonth: z.string().regex(/^([1-9]|[12][0-9]|3[01])$/, "Day must be between 1 and 31.").optional(),
-})
+}).refine(data => {
+    if (data.frequency === 'once' && !data.runDate) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Please select a date for a one-time task.",
+    path: ["runDate"],
+});
+
 
 const employees = [
   { id: "1", name: "Alice Johnson" },
@@ -70,20 +84,22 @@ export default function TaskForm() {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     // Reconstruct cron string from form values
-    let cron = "";
-    const { minute, hour, dayOfMonth, daysOfWeek, frequency } = values;
+    let schedule = "";
+    const { minute, hour, dayOfMonth, daysOfWeek, frequency, runDate } = values;
 
-    if (frequency === "hourly") {
-        cron = `${minute} * * * *`;
+    if (frequency === "once" && runDate) {
+        schedule = `${minute} ${hour} ${runDate.getDate()} ${runDate.getMonth() + 1} *`;
+    } else if (frequency === "hourly") {
+        schedule = `${minute} * * * *`;
     } else if (frequency === "daily") {
-        cron = `${minute} ${hour} * * *`;
+        schedule = `${minute} ${hour} * * *`;
     } else if (frequency === "weekly") {
-        cron = `${minute} ${hour} * * ${daysOfWeek?.join(",")}`;
+        schedule = `${minute} ${hour} * * ${daysOfWeek?.join(",")}`;
     } else if (frequency === "monthly") {
-        cron = `${minute} ${hour} ${dayOfMonth} * *`;
+        schedule = `${minute} ${hour} ${dayOfMonth} * *`;
     }
     
-    console.log({ ...values, schedule: cron });
+    console.log({ ...values, schedule });
 
     toast({
       title: "Task Scheduled!",
@@ -167,6 +183,7 @@ export default function TaskForm() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="once">Once</SelectItem>
                           <SelectItem value="hourly">Hourly</SelectItem>
                           <SelectItem value="daily">Daily</SelectItem>
                           <SelectItem value="weekly">Weekly</SelectItem>
@@ -177,6 +194,50 @@ export default function TaskForm() {
                     </FormItem>
                   )}
                 />
+
+                {frequency === 'once' && (
+                  <FormField
+                    control={form.control}
+                    name="runDate"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={"outline"}
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={field.value}
+                              onSelect={field.onChange}
+                              disabled={(date) =>
+                                date < new Date(new Date().setHours(0,0,0,0))
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -192,8 +253,8 @@ export default function TaskForm() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
-                                <SelectItem key={minute} value={minute.toString()}>{minute}</SelectItem>
+                            {Array.from({ length: 60 }, (_, i) => i.toString()).map(minute => (
+                                <SelectItem key={minute} value={minute}>{minute}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -215,8 +276,8 @@ export default function TaskForm() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
-                                    <SelectItem key={hour} value={hour.toString()}>{hour}</SelectItem>
+                                {Array.from({ length: 24 }, (_, i) => i.toString()).map(hour => (
+                                    <SelectItem key={hour} value={hour}>{hour}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
