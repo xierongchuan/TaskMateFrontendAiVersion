@@ -4,16 +4,16 @@ import TaskChart from "./components/task-chart";
 
 export default function DashboardPage() {
   return (
-    <div className="grid gap-6 md:gap-8 xl:grid-cols-3">
-      <div className="grid gap-6 md:grid-cols-2 xl:col-span-3">
+    <div className="grid grid-cols-1 gap-6 md:gap-8 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:col-span-3">
         <StatsCards />
       </div>
 
-      <div className="grid gap-6 xl:col-span-2">
+      <div className="lg:col-span-2">
         <TaskChart />
       </div>
 
-      <div className="grid gap-6 xl:col-span-1">
+      <div className="lg:col-span-1">
         <AiInsights />
       </div>
     </div>
